@@ -298,6 +298,7 @@ class MODEL_ARCH(IntEnum):
     DECI             = auto()
     FALCON           = auto()
     FALCON_H1        = auto()
+    FALCON3VL        = auto()
     BAICHUAN         = auto()
     GROK             = auto()
     GPT2             = auto()
@@ -691,6 +692,7 @@ MODEL_ARCH_NAMES: dict[MODEL_ARCH, str] = {
     MODEL_ARCH.ERNIE4_5:         "ernie4_5",
     MODEL_ARCH.ERNIE4_5_MOE:     "ernie4_5-moe",
     MODEL_ARCH.FALCON_H1:        "falcon-h1",
+    MODEL_ARCH.FALCON3VL:        "falcon3vl",
     MODEL_ARCH.HUNYUAN_MOE:      "hunyuan-moe",
     MODEL_ARCH.SMOLLM3:          "smollm3",
     MODEL_ARCH.LFM2:             "lfm2",
@@ -2393,6 +2395,9 @@ MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
         MODEL_TENSOR.FFN_GATE,
         MODEL_TENSOR.FFN_DOWN,
         MODEL_TENSOR.FFN_UP,
+    ],
+    MODEL_ARCH.FALCON3VL: [
+        # MODEL_TENSOR.TOKEN_EMBD,
     ],
     MODEL_ARCH.FALCON_H1: [
         # Token embedding

@@ -7267,6 +7267,87 @@ class UltravoxWhisperEncoderModel(WhisperEncoderModel):
         self.gguf_writer.add_audio_stack_factor(self.global_config["stack_factor"])
 
 
+@ModelBase.register("Falcon3VLForConditionalGeneration")
+class Falcon3VLModel(TextModel):
+    model_arch = gguf.MODEL_ARCH.LLAMA
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+
+    def set_vocab(self):
+        try:
+            self._set_vocab_sentencepiece()
+        except FileNotFoundError:
+            self._set_vocab_gpt2()
+
+    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
+        del bid  # unused
+        if name.startswith("visual"):
+            # skip multimodal tensors
+            return []
+        return [(self.map_tensor_name(name), data_torch)]
+
+
+@ModelBase.register("Falcon3VLModel",
+                    "Falcon3VLForConditionalGeneration")
+class Falcon3VLVisionModel(MmprojModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.hparams_vision is not None
+        self.hparams_vision["image_size"] = self.hparams_vision.get("image_size", 560)
+        self.hparams_vision["num_attention_heads"] = self.hparams_vision.get("num_heads")
+        self.hparams_vision["num_hidden_layers"] = self.hparams_vision.get("depth")
+        self.hparams_vision["intermediate_size"] = self.hparams_vision.get("hidden_size")
+        self.hparams_vision["hidden_size"] = self.hparams_vision.get("embed_dim")
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+        assert self.hparams_vision is not None
+        self.gguf_writer.add_clip_projector_type(gguf.VisionProjectorType.QWEN2VL)
+        # default values below are taken from HF tranformers code
+        self.gguf_writer.add_vision_attention_layernorm_eps(self.global_config.get("rms_norm_eps", 1e-6))
+
+    def tensor_force_quant(self, name, new_name, bid, n_dims):
+        del bid, name, n_dims  # unused
+        if ".patch_embd." in new_name:
+            return gguf.GGMLQuantizationType.F16
+        if ".position_embd." in new_name:
+            return gguf.GGMLQuantizationType.F32
+        return False
+
+    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
+        del bid  # unused
+        if name.startswith("visual."):
+            # process visual tensors
+            if 'patch_embed.proj.weight' in name:
+                # split Conv3D into Conv2Ds
+                c1, c2, kt, kh, kw = data_torch.shape
+                del c1, c2, kh, kw  # unused
+                assert kt == 2, "Current implmentation only support temporal_patch_size of 2"
+                return [
+                    (gguf.TENSOR_NAMES[gguf.MODEL_TENSOR.V_ENC_EMBD_PATCH] + ".weight"  , data_torch[:, :, 0, ...]),
+                    (gguf.TENSOR_NAMES[gguf.MODEL_TENSOR.V_ENC_EMBD_PATCH] + ".weight.1", data_torch[:, :, 1, ...]),
+                ]
+            elif ".qkv." in name:
+                if data_torch.ndim == 2: # weight
+                    c3, _ = data_torch.shape
+                else: # bias
+                    c3 = data_torch.shape[0]
+                assert c3 % 3 == 0
+                c = c3 // 3
+                wq = data_torch[:c]
+                wk = data_torch[c: c * 2]
+                wv = data_torch[c * 2:]
+                return [
+                    (self.map_tensor_name(name.replace("qkv", "q")), wq),
+                    (self.map_tensor_name(name.replace("qkv", "k")), wk),
+                    (self.map_tensor_name(name.replace("qkv", "v")), wv),
+                ]
+            else:
+                return [(self.map_tensor_name(name), data_torch)]
+        return [] # skip other tensors
+
+
 @ModelBase.register("FalconH1ForCausalLM")
 class FalconH1Model(Mamba2Model):
     model_arch = gguf.MODEL_ARCH.FALCON_H1
