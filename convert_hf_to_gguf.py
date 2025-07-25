@@ -7267,9 +7267,11 @@ class UltravoxWhisperEncoderModel(WhisperEncoderModel):
         self.gguf_writer.add_audio_stack_factor(self.global_config["stack_factor"])
 
 
-@ModelBase.register("Falcon3VLForConditionalGeneration")
-class Falcon3VLModel(TextModel):
-    model_arch = gguf.MODEL_ARCH.LLAMA
+@ModelBase.register("Falcon3VLForConditionalGeneration",
+                    "Falcon3VLForCausalLM",
+                    "Falcon3VLModel")
+class Falcon3VLModel(LlamaModel):
+    model_arch = gguf.MODEL_ARCH.FALCON3VL
 
     def set_gguf_parameters(self):
         super().set_gguf_parameters()
