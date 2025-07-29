@@ -30,6 +30,7 @@ static std::string ggml_ne_string(const ggml_tensor * t) {
 static void ggml_print_tensor(uint8_t * data, ggml_type type, const int64_t * ne, const size_t * nb, int64_t n) {
     GGML_ASSERT(n > 0);
     float sum = 0;
+    // pretty-print (possibly truncated)
     for (int64_t i3 = 0; i3 < ne[3]; i3++) {
         LOG("                                     [\n");
         for (int64_t i2 = 0; i2 < ne[2]; i2++) {
@@ -67,7 +68,6 @@ static void ggml_print_tensor(uint8_t * data, ggml_type type, const int64_t * ne
                         GGML_ABORT("fatal error");
                     }
                     LOG("%12.4f", v);
-                    sum += v;
                     if (i0 < ne[0] - 1) LOG(", ");
                 }
                 LOG("],\n");
@@ -75,8 +75,43 @@ static void ggml_print_tensor(uint8_t * data, ggml_type type, const int64_t * ne
             LOG("                                      ],\n");
         }
         LOG("                                     ]\n");
-        LOG("                                     sum = %f\n", sum);
     }
+    // calculate sum of all elements (corrected for element size)
+    float total_sum = 0;
+    for (int64_t i3 = 0; i3 < ne[3]; i3++) {
+        for (int64_t i2 = 0; i2 < ne[2]; i2++) {
+            for (int64_t i1 = 0; i1 < ne[1]; i1++) {
+                for (int64_t i0 = 0; i0 < ne[0]; i0++) {
+                    size_t offset = i3 * nb[3] + i2 * nb[2] + i1 * nb[1] + i0 * nb[0];
+                    float v;
+                    switch (type) {
+                        case GGML_TYPE_F16:
+                            v = ggml_fp16_to_fp32(*(ggml_fp16_t *)(data + offset));
+                            break;
+                        case GGML_TYPE_F32:
+                            v = *(float *)(data + offset);
+                            break;
+                        case GGML_TYPE_I64:
+                            v = (float)(*(int64_t *)(data + offset));
+                            break;
+                        case GGML_TYPE_I32:
+                            v = (float)(*(int32_t *)(data + offset));
+                            break;
+                        case GGML_TYPE_I16:
+                            v = (float)(*(int16_t *)(data + offset));
+                            break;
+                        case GGML_TYPE_I8:
+                            v = (float)(*(int8_t *)(data + offset));
+                            break;
+                        default:
+                            GGML_ABORT("fatal error");
+                    }
+                    total_sum += v;
+                }
+            }
+        }
+    }
+    LOG("                                     total sum = %f\n", total_sum);
 }
 
 /**
