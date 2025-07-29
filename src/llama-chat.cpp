@@ -67,6 +67,7 @@ static const std::map<std::string, llm_chat_template> LLM_CHAT_TEMPLATES = {
     { "smolvlm",           LLM_CHAT_TEMPLATE_SMOLVLM           },
     { "hunyuan-moe",       LLM_CHAT_TEMPLATE_HUNYUAN_MOE       },
     { "kimi-k2",           LLM_CHAT_TEMPLATE_KIMI_K2           },
+    { "falcon3vl",         LLM_CHAT_TEMPLATE_FALCON3VL         },
 };
 
 llm_chat_template llm_chat_template_from_str(const std::string & name) {
@@ -136,9 +137,10 @@ llm_chat_template llm_chat_detect_template(const std::string & tmpl) {
         return LLM_CHAT_TEMPLATE_ZEPHYR;
     } else if (tmpl_contains("bos_token + message['role']")) {
         return LLM_CHAT_TEMPLATE_MONARCH;
-    } else if (tmpl_contains("<start_of_turn>")) {
-        return LLM_CHAT_TEMPLATE_GEMMA;
-    } else if (tmpl_contains("'\\n\\nAssistant: ' + eos_token")) {
+    } 
+    // else if (tmpl_contains("<start_of_turn>")) {
+    //     return LLM_CHAT_TEMPLATE_GEMMA;} 
+    else if (tmpl_contains("'\\n\\nAssistant: ' + eos_token")) {
         // OrionStarAI/Orion-14B-Chat
         return LLM_CHAT_TEMPLATE_ORION;
     } else if (tmpl_contains("GPT4 Correct ")) {
@@ -195,6 +197,8 @@ llm_chat_template llm_chat_detect_template(const std::string & tmpl) {
         return LLM_CHAT_TEMPLATE_HUNYUAN_MOE;
     } else if (tmpl_contains("<|im_assistant|>assistant<|im_middle|>")) {
         return LLM_CHAT_TEMPLATE_KIMI_K2;
+    } else if (tmpl_contains("|<start_of_turn>|User:")) {
+        return LLM_CHAT_TEMPLATE_FALCON3VL;
     }
     return LLM_CHAT_TEMPLATE_UNKNOWN;
 }
@@ -722,6 +726,27 @@ int32_t llm_chat_apply_template(
             if (add_ass) {
                 ss << "<|im_assistant|>assistant<|im_middle|>";
             }
+        }
+    } else if (tmpl == LLM_CHAT_TEMPLATE_FALCON3VL) {
+        // Falcon 3VL
+        for (auto message : chat) {
+            std::string role(message->role);
+
+            if (role == "user") {
+                ss << "|<start_of_turn>|User: ";
+            } else {
+                ss << "\nFalcon:";
+            }
+
+            // If message->content is a string, just print it
+            // If it's a list (e.g., multimodal), you need to handle each content part
+            // Here, we assume message->content is always a string for simplicity.
+            // For multimodal, you would need to extend llama_chat_message to support a list of content blocks.
+
+            ss << message->content << "|<end_of_turn>|\n";
+        }
+        if (add_ass) {
+            ss << "Falcon:";
         }
     } else {
         // template not supported
