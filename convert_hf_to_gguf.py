@@ -591,10 +591,12 @@ class TextModel(ModelBase):
         seems_special = token_text in (
             "<pad>",  # deepseek-coder
             "<mask>", "<2mass>", "[@BOS@]",  # gemma{,-2}
+            "|<start_of_turn>|", "|<end_of_turn>|",  # Falcon3VL
         )
 
         seems_special = seems_special or (token_text.startswith("<|") and token_text.endswith("|>"))
         seems_special = seems_special or (token_text.startswith("<｜") and token_text.endswith("｜>"))  # deepseek-coder
+        seems_special = seems_special or (token_text.startswith("|<") and token_text.endswith(">|"))   # Falcon3VL
 
         # TODO: should these be marked as UNUSED instead? (maybe not)
         seems_special = seems_special or (token_text.startswith("<unused") and token_text.endswith(">"))  # gemma{,-2}
@@ -716,7 +718,7 @@ class TextModel(ModelBase):
             res = "bert-bge"
         if chkhsh == "9d032fcbd5501f4a38150912590928bfb36091efb5df11b8e2124b0390e3fb1e":
             # ref: https://huggingface.co/tiiuae/Falcon3-7B-Base
-            res = "falcon3"
+            res = "falcon3vl"
         if chkhsh == "8e62295832751ca1e8f92f2226f403dea30dc5165e448b5bfa05af5340c64ec7":
             # ref: https://huggingface.co/BAAI/bge-large-zh-v1.5
             res = "bert-bge-large"
@@ -7275,18 +7277,17 @@ class Falcon3VLModel(LlamaModel):
 
     def set_gguf_parameters(self):
         super().set_gguf_parameters()
+        self.gguf_writer.add_add_bos_token(False)
 
     def set_vocab(self):
-        try:
-            self._set_vocab_sentencepiece()
-        except FileNotFoundError:
-            self._set_vocab_gpt2()
+        super().set_vocab()
+        self.gguf_writer.add_add_bos_token(False)
 
     def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
-        del bid  # unused
         if name.startswith("visual"):
             # skip multimodal tensors
             return []
+        super().modify_tensors(data_torch, name, bid)
         return [(self.map_tensor_name(name), data_torch)]
 
 
