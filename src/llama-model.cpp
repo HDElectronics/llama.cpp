@@ -16269,13 +16269,13 @@ struct llm_build_falcon3vl : public llm_graph_context {
             cur = ggml_add(ctx0, cur, ffn_inp);
             cb(cur, "ffn_out", il);
 
-            cur = build_cvec(cur, il);
-            cb(cur, "l_out", il);
-
             if (il == n_layer - 1 && inp_out_ids) {
                 cur   = ggml_get_rows(ctx0,   cur, inp_out_ids);
                 inpSA = ggml_get_rows(ctx0, inpSA, inp_out_ids);
             }
+
+            cur = build_cvec(cur, il);
+            cb(cur, "l_out", il);
 
             // input for next layer
             inpL = cur;
