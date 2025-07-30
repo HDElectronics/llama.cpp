@@ -7380,7 +7380,7 @@ class Falcon3VLVisionModel(MmprojModel):
     def set_gguf_parameters(self):
         super().set_gguf_parameters()
         assert self.hparams_vision is not None
-        self.gguf_writer.add_clip_projector_type(gguf.VisionProjectorType.QWEN2VL)
+        self.gguf_writer.add_clip_projector_type(gguf.VisionProjectorType.FALCON3VL)
         # default values below are taken from HF tranformers code
         self.gguf_writer.add_vision_attention_layernorm_eps(self.global_config.get("rms_norm_eps", 1e-6))
 
