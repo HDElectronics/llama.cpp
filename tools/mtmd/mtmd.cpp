@@ -294,6 +294,13 @@ struct mtmd_context {
             aud_beg = "[BEGIN_AUDIO]";
 
         }
+
+        else if (proj == PROJECTOR_TYPE_FALCON3VL) {
+            // |<start_of_img>| ... (image embeddings) ... |<end_of_img>|
+            img_beg = "|<start_of_img>|";
+            img_end = "|<end_of_img>|";
+
+        }
     }
 
     // get clip ctx based on chunk type
