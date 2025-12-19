@@ -175,6 +175,10 @@ struct llm_build_falcon_h1 : public llm_graph_context_mamba {
     llm_build_falcon_h1(const llama_model & model, const llm_graph_params & params);
 };
 
+struct llm_build_falcon3vl : public llm_graph_context {
+    llm_build_falcon3vl(const llama_model & model, const llm_graph_params & params);
+};
+
 struct llm_build_gemma2_iswa : public llm_graph_context {
     llm_build_gemma2_iswa(const llama_model & model, const llm_graph_params & params);
 };
