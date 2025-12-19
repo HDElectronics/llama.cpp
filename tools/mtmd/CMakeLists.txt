@@ -23,6 +23,7 @@ add_library(mtmd
             models/llava.cpp
             models/minicpmv.cpp
             models/pixtral.cpp
+            models/falcon3vl.cpp
             models/qwen2vl.cpp
             models/qwen3vl.cpp
             models/siglip.cpp
