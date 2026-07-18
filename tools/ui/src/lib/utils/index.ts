@@ -191,3 +191,11 @@ export { uuid } from './uuid';
 
 // CSS utilities
 export { remToPx } from './css';
+
+// LocateAnything grounding output
+export {
+	parseBoundingBoxes,
+	hasBoundingBoxes,
+	BOUNDING_BOX_COORD_RANGE,
+	type BoundingBox
+} from './bounding-boxes';

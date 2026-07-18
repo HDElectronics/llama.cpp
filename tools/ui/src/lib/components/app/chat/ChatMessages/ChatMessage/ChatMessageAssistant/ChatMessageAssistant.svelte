@@ -10,8 +10,10 @@
 	import { getMessageEditContext } from '$lib/contexts';
 	import { useProcessingState } from '$lib/hooks/use-processing-state.svelte';
 	import { isLoading, isChatStreaming } from '$lib/stores/chat.svelte';
-	import { copyToClipboard, deriveAgenticSections } from '$lib/utils';
-	import { AgenticSectionType } from '$lib/enums';
+	import { copyToClipboard, deriveAgenticSections, parseBoundingBoxes } from '$lib/utils';
+	import { conversationsStore } from '$lib/stores/conversations.svelte';
+	import ChatMessageBoundingBoxes from './ChatMessageBoundingBoxes.svelte';
+	import { AgenticSectionType, AttachmentType } from '$lib/enums';
 	import { REASONING_TAGS } from '$lib/constants/agentic';
 	import { tick } from 'svelte';
 	import { fade } from 'svelte/transition';
@@ -180,6 +182,31 @@
 
 	let displayedModel = $derived(message.model ?? null);
 
+	// LocateAnything grounding: parse <ref>/<box> detections from the reply and,
+	// if the preceding user turn attached an image, draw the boxes on a copy of it.
+	let detectedBoxes = $derived(parseBoundingBoxes(message.content));
+
+	let groundingImageSrc = $derived.by(() => {
+		if (detectedBoxes.length === 0) return null;
+
+		const messages = conversationsStore.activeMessages;
+		const selfIndex = messages.findIndex((m) => m.id === message.id);
+		const searchFrom = selfIndex === -1 ? messages.length - 1 : selfIndex - 1;
+
+		// Walk backwards to the nearest earlier message carrying an image attachment.
+		for (let i = searchFrom; i >= 0; i--) {
+			const image = messages[i]?.extra?.find(
+				(e: DatabaseMessageExtra) => e.type === AttachmentType.IMAGE
+			);
+
+			if (image && 'base64Url' in image) {
+				return image.base64Url;
+			}
+		}
+
+		return null;
+	});
+
 	let isCurrentlyLoading = $derived(isLoading());
 	let isStreaming = $derived(isChatStreaming());
 	let hasNoContent = $derived(!message?.content?.trim());
@@ -241,6 +268,10 @@
 				{isLastAssistantMessage}
 				highlightTurns={highlightAgenticTurns}
 			/>
+		{/if}
+
+		{#if !showRawOutput && detectedBoxes.length > 0 && groundingImageSrc}
+			<ChatMessageBoundingBoxes imageSrc={groundingImageSrc} boxes={detectedBoxes} />
 		{/if}
 	{:else}
 		<div class="text-sm whitespace-pre-wrap">
